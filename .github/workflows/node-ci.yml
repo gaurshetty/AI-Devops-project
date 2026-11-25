@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '26'
+          node-version: '24'
           cache: npm
 
       - name: Verify Node.js and npm versions
@@ -29,7 +29,7 @@ jobs:
       - name: Install project dependencies
         run: |
           echo "Installing dependencies from package-lock.json..."
-          npm ci
+          npm install
 
       - name: Verify application entry point
         run: |
@@ -38,6 +38,9 @@ jobs:
             exit 1
           fi
           echo "Success: index.js was found."
+
+      - name: Run automated tests
+        run: npm test
 
       - name: Start Node.js application
         run: |
