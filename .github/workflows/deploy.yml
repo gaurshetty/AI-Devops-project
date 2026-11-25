@@ -1,0 +1,74 @@
+
+name: Deploy Node.js Application to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Application via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "=================================="
+            echo "Starting EC2 Deployment"
+            echo "=================================="
+
+            # Step 1: Navigate to application directory
+            cd ~/node-express-app
+
+            # Step 2: Pull latest code
+            echo "Pulling latest code from GitHub..."
+            git pull origin main
+
+            # Step 3: Stop and remove existing container
+            echo "Removing existing Docker container..."
+
+            docker rm -f node-app || true
+
+            # Step 4: Build Docker image
+            echo "Building Docker image..."
+
+            docker build -t node-express-app:latest .
+
+            # Step 5: Start new container
+            echo "Starting new Docker container..."
+
+            docker run -d \
+              --name node-app \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              node-express-app:latest
+
+            # Step 6: Verify deployment
+            echo "Checking application health..."
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3000/health; then
+                echo ""
+                echo "=================================="
+                echo "Deployment Successful!"
+                echo "=================================="
+                docker ps
+                exit 0
+              fi
+
+              echo "Waiting for application... ($i/30)"
+              sleep 2
+            done
+
+            echo "ERROR: Application health check failed!"
+
+            docker logs node-app
+            exit 1
